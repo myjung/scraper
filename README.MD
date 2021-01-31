@@ -18,9 +18,35 @@
  5. 구인 정보를 데이터 저장소에 보내고 기업 상세정보를 중복확인 후 데이터 저장소에 추가함
  6. 작성시점에서 3500개 가량의 구인글이 올라와 있음
  * 필드 없는 경우에 대해 대비해야함
+
+## 로켓펀치 데이터 수집 순서
+1. 로켓펀치 api 경로 이용할 경우 각 페이지 별로 https://www.rocketpunch.com/jobs?page={number} 를 통해 다음과 같은 데이터가 반환됨 
+   - 평균적으로 15kb 정도의 용량
+
+ ```javascript
+ response ={
+    meta: {code : 200},
+    data: {
+       template : JSON.stringify(HTML) ,
+       title : "채용 정보 | 로켓펀치 - 비즈니스 네트워크" 
+       seou_url : "https://www.rocketpunch.com/jobs",
+    }
+ }
+ ```
+
+2. response template 구조
+   - css('div#company-list')로 최상단 래퍼를 확인 할 수 있음
+   - css('div.company.item')로 각 회사별 정보를 나눠서 확인할 수 있음
+   - 위에서 얻은 노드들은 attribute data-company_id를 통해 회사 고유 id를 얻을 수 있음 
+   - div.content div.company-name 으로 회사 이름과 상세 접속 페이지를 얻을 수 있음
+   - 'div.company-name>a:first-of-type' css 셀렉터로 회사 이름을 확인할 수 있음 하위에 span으로 회사이름 텍스트가 존재함
+   - div.company-jobs-detail 로 잡 상세 정보를 구할 수 있음
+
 ## - modified
- - robots.txt 준수를 위해 https://rocketpunch.com/api 경로를 사용하던 스크래퍼는 폐기함 
- - sitemap을 이용하여 수집하는 비용을 줄임
+- ~~robots.txt 준수를 위해 https://rocketpunch.com/api 경로를 사용하던 스크래퍼는 폐기함~~
+- ~~sitemap을 이용하여 수집하는 비용을 줄임~~
+- sitemap 갱신이 너무 늦어 api경로를 사용하는 방식으로 변경함
+- 향후 문제제기가 있을 경우 splash를 통해 ajax 로딩을 직접 하는 방식으로 변경
 
 ```
 - 로켓펀치 협업문의에 공식적으로 크롤링해도 되는지 문의 했으나 (21년 01월 23일) 답장이 없어 그냥 robots.txt 준수하면서 크롤링 하기로 결정함
