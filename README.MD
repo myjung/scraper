@@ -49,7 +49,7 @@
 - 향후 문제제기가 있을 경우 splash를 통해 ajax 로딩을 직접 하는 방식으로 변경
 
 ```
-- 로켓펀치 협업문의에 공식적으로 크롤링해도 되는지 문의 했으나 (21년 01월 23일) 답장이 없어 그냥 robots.txt 준수하면서 크롤링 하기로 결정함
+- 로켓펀치 협업문의에 공식적으로 크롤링해도 되는지 문의 했으나 (21년 01월 23일) 답장이 없어 그냥 robots.txt 최대한 준수하면서 크롤링 하기로 결정함
 - 원티드는 협조요청할 깜냥이 없어 그냥 둘 다 동일한 기준으로 진행
 ```
 
@@ -68,8 +68,18 @@
 
 # 프로젝트 진행 계획
  1. 로켓펀치에서 동작하는 스크래퍼 구현
-    - rocketpunch에서 사이트맵을 불러와 대상 url을 선택하기
-    - 사이트맵에서 선택된 urls에 대해 순차적으로 데이터를 읽어오기
+    - ~~rocketpunch에서 사이트맵을 불러와 대상 url을 선택하기~~
+    - ~~사이트맵에서 선택된 urls에 대해 순차적으로 데이터를 읽어오기~~
+    - `f"https://www.rocketpunch.com/jobs?page={number}"`
+    - 페이지 접속시 아래 주소로 fetch
+    - `f"https://www.rocketpunch.com/api/jobs/template?page={number}&q="`
+    - keyword는 사용하지 않음
+    - `f"https://www.rocketpunch.com/jobs/{id}"`
+    - 페이지의 경우 하위 페이지로 redirection 발생 status code : 302 하위 경로에 title 데이터를 추가함
+    - `f"https://www.rocketpunch.com/jobs/{id}/title"`
+    - **실제 동작 테스트 결과 title이 일치하지 않아도 데이터를 제대로 보냄**
+    - 이후 발생하는 fetch는 무시해도 템플릿에 모든 정보가 담겨 있음
+
  2. 원티드에서 동작하는 스크래퍼 구현
     - /api/v4/jobs 에서 전체 데이터를 수집
     - 전체 데이터에서 개별 url을 순회하며 상세 데이터 수집
