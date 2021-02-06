@@ -32,6 +32,7 @@ https://www.rocketpunch.com/jobs/{id}/title
 |companies|
 |jobs|
 
+
 - pages
     - auto increment_key pk
     - 크롤링 시작한 타임스탬프
@@ -54,17 +55,23 @@ https://www.rocketpunch.com/jobs/{id}/title
     - industry
 
 - jobs
-    - job_id
+    - job_id pk
+    - company_id fk
     - title
     - work
     - speicalities
     - 분야
     - 지역
-    - 경력여부
-    - 고용형태
-    - 연봉
-    - 공고 수정
-    - 공고 마감
+    - 경력
+    - set(계약, 정규, 인턴) 고용형태
+    - smallint 연봉 start
+    - smallint 연봉 end
+    - date 공고 수정
+    - date 공고 마감
+
+- tech_tags
+    - tag_id pk
+    - varchar tag_name 
 
 ---
 ### 로켓펀치 페이지 조회 방법
