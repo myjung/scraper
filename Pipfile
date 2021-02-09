@@ -1,0 +1,16 @@
+PIPENV_IGNORE_VIRTUALENVS=1
+
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+scrapy = "*"
+sqlalchemy = "*"
+
+[dev-packages]
+requests = "*"
+
+[requires]
+python_version = "3.8"
