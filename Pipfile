@@ -12,6 +12,7 @@ sqlalchemy = "*"
 [dev-packages]
 requests = "*"
 black = "*"
+rope = "*"
 
 [requires]
 python_version = "3.8"
