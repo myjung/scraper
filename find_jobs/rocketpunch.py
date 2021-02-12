@@ -9,9 +9,14 @@ from scrapy.selector import Selector
 from utils import get_ua
 
 
+class PrintData:
+    def process_item(self, item, spider):
+        print(type(item), item)
+
+
 class RocketpuchPage(Item):
     """
-    페이지 별 회사 리스트 템플릿을 반환하는 아이템
+    수집하려는 각 페이지를 나타내는 아이템 페이지 번호와 회사 리스트를 가지고 있다.
     """
 
     page = Field()
@@ -23,15 +28,13 @@ class RocketpunchPageSpider(Spider):
     first step : https://www.rocketpunch.com/jobs
         response headers를 통해 앞으로 사용할 requests headers를 설정함
     second step : https://www.rocketpunch.com/api/jobs/template?page=&q=
-        첫번째 아이템 및 기저조건으로 최종 페이지를 확인 후 한꺼번에 제너레이터를 생성한다.
-    second step : https://www.rocketpunch.com/api/jobs/template?page={page_number}&q=
-        page_number에 해당하는 이터레이터를 생성하여 전체 페이지에 대해 각각의 아이템을 반환한다. (동시접속 따라 다름)
+        첫번째 페이지에 접속해서 전체 페이지 확인 후 한꺼번에 requests를 생성한다.
     """
 
     name = "rocketpunch_jobs"
     hello_url = "https://www.rocketpunch.com/jobs"
     custom_settings = {
-        "DOWNLOAD_DELAY": 2,
+        "DOWNLOAD_DELAY": 0,
         "USER_AGENT": get_ua(0),  # get first user_agent string
         "DEFAULT_REQUEST_HEADERS": {
             "dnt": "1",  # do not track me
@@ -40,6 +43,9 @@ class RocketpunchPageSpider(Spider):
         },
         "SCHEDULER_DISK_QUEUE": "scrapy.squeues.PickleFifoDiskQueue",
         "SCHEDULER_MEMORY_QUEUE": "scrapy.squeues.FifoMemoryQueue",
+        "ITEM_PIPELINES": {
+            "rocketpunch.PrintData": 300,
+        },
     }
 
     def start_requests(self):
@@ -48,15 +54,11 @@ class RocketpunchPageSpider(Spider):
         """
         yield Request(url=self.hello_url, callback=self.hello_parser)
 
-    def parse(self, response):
-        pass
-
     def hello_parser(self, response):
-        # print(response.body)
         yield Request(
             url="https://www.rocketpunch.com/api/jobs/template?page=&q=",
             callback=self.first_page_parser,
-            meta={"page_number": 1}
+            meta={"page_number": 1},
         )
 
     def first_page_parser(self, response):
@@ -64,9 +66,9 @@ class RocketpunchPageSpider(Spider):
         end_page_number = int(
             data.css("div.ui.pagination div.disabled.item + a::text").get()
         )
-        self.logger.info(end_page_number)
+        self.logger.info(f"generating 1 to {end_page_number} pages requests")
         yield self.page_parser(response)
-        for page_number in range(2, 4):
+        for page_number in range(2, 2):
             yield Request(
                 url=f"https://www.rocketpunch.com/api/jobs/template?page={page_number}&q=",
                 headers={"Referer": "https://www.rocketpunch.com/jobs"},
@@ -99,56 +101,48 @@ class RocketpunchPageSpider(Spider):
         self.logger.debug("=" * 50)
         text = response.json()["data"]["template"]
         selector = Selector(text=text)
+        company_list = []
+        for company in selector.css("#company-list > div.company"):
+            _company_name = company.css("div.content>div.company-name")[0]
+            _a = _company_name.css("a[target='_blank']")[0]
+            _job_details = company.css("div.company-jobs-detail>div.job-detail")
+            company_id = company.attrib["data-company_id"]
+            company_href = _a.attrib["href"]
+            company_name = "".join(
+                _a.css(".header.name>strong::text,small::text").getall()
+            )
+            company_description = company.css("div.description::text").get()
+            company_meta_info = company.css("div.nowrap.meta::text").get()
+            job_details = []
+            for job in _job_details:
+                job_href = job.css("a.job-title::attr(href)").get()
+                job_title = job.css("a.job-title::text").get()
+                job_stat_info = job.css("span.job-stat-info::text").get()
+                job_dates = "".join(job.css("div.job-dates>span").getall()).strip()
+                job_details.append(
+                    {
+                        "job_href": job_href,
+                        "job_title": job_title,
+                        "job_stat_info": job_stat_info,
+                        "job_dates": job_dates,
+                    }
+                )
+            company_list.append(
+                {
+                    "company_id": company_id,
+                    "company_href": company_href,
+                    "company_name": company_name,
+                    "company_description": company_description,
+                    "company_meta_info": company_meta_info,
+                    "job_details": job_details,
+                }
+            )
 
-    """
-    메인 페이지에서 최종 페이지를 구한 후 전체 페이지를 순회한다.
-    각 페이지 작업이 끝나면 page, (company...), (job...) 아이템들을 반환한다.
-    """
+        l = ItemLoader(item=RocketpuchPage(), selector=selector)
+        l.add_value("page", response.meta["page_number"])
 
-    """
-    first step
-    headers = {
-    'authority': 'www.rocketpunch.com',
-    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36',
-    'x-csrftoken': 'undefined',
-    'dnt': '1',
-    'accept': '*/*',
-    'sec-fetch-site': 'same-origin',
-    'sec-fetch-mode': 'same-origin',
-    'sec-fetch-dest': 'empty',
-    'referer': 'https://www.rocketpunch.com/jobs',
-    'accept-language': 'ko-KR,ko;q=0.9',
-    }
-
-    params = (
-        ('page', ''),
-        ('q', ''),
-    )
-
-    response = requests.get('https://www.rocketpunch.com/api/jobs/template', headers=headers, params=params)
-
-    recursive step until end
-    headers = {
-    'authority': 'www.rocketpunch.com',
-    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36',
-    'x-csrftoken': 'undefined',
-    'dnt': '1',
-    'accept': '*/*',
-    'sec-fetch-site': 'same-origin',
-    'sec-fetch-mode': 'same-origin',
-    'sec-fetch-dest': 'empty',
-    'referer': 'https://www.rocketpunch.com/jobs',
-    'accept-language': 'ko-KR,ko;q=0.9',
-    }
-
-    params = (
-        ('page', '2'),
-        ('q', ''),
-    )
-
-    response = requests.get('https://www.rocketpunch.com/api/jobs/template', headers=headers, params=params)
-    """
-    pass
+        l.add_value("company_list", company_list)
+        return l.load_item()
 
 
 class RocketpunchDetailSpider(Spider):
