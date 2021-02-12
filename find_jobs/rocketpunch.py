@@ -11,7 +11,16 @@ from utils import get_ua
 
 class PrintData:
     def process_item(self, item, spider):
-        print(type(item), item)
+        print("type is ", type(item), item["page"])
+        for company in item["company_list"]:
+            print(company["company_name"], end="\t")
+            print(
+                [
+                    (job["job_title"], job["job_date_until"])
+                    for job in company["job_details"]
+                ]
+            )
+        return item
 
 
 class RocketpuchPage(Item):
@@ -34,7 +43,7 @@ class RocketpunchPageSpider(Spider):
     name = "rocketpunch_jobs"
     hello_url = "https://www.rocketpunch.com/jobs"
     custom_settings = {
-        "DOWNLOAD_DELAY": 0,
+        "DOWNLOAD_DELAY": 1,
         "USER_AGENT": get_ua(0),  # get first user_agent string
         "DEFAULT_REQUEST_HEADERS": {
             "dnt": "1",  # do not track me
@@ -45,6 +54,14 @@ class RocketpunchPageSpider(Spider):
         "SCHEDULER_MEMORY_QUEUE": "scrapy.squeues.FifoMemoryQueue",
         "ITEM_PIPELINES": {
             "rocketpunch.PrintData": 300,
+        },
+        "FEEDS": {
+            "output.json": {
+                "format": "json",
+                "indent": 2,
+                "encoding": "utf8",
+                "fields": None,
+            }
         },
     }
 
@@ -68,7 +85,7 @@ class RocketpunchPageSpider(Spider):
         )
         self.logger.info(f"generating 1 to {end_page_number} pages requests")
         yield self.page_parser(response)
-        for page_number in range(2, 2):
+        for page_number in range(2, end_page_number+1):
             yield Request(
                 url=f"https://www.rocketpunch.com/api/jobs/template?page={page_number}&q=",
                 headers={"Referer": "https://www.rocketpunch.com/jobs"},
@@ -118,13 +135,27 @@ class RocketpunchPageSpider(Spider):
                 job_href = job.css("a.job-title::attr(href)").get()
                 job_title = job.css("a.job-title::text").get()
                 job_stat_info = job.css("span.job-stat-info::text").get()
-                job_dates = "".join(job.css("div.job-dates>span").getall()).strip()
+                _dates = tuple(
+                    filter(
+                        lambda x: x != "",
+                        [
+                            text.strip()
+                            for text in job.css("div.job-dates>span::text").getall()
+                        ],
+                    )
+                )
+                job_date_until = _dates[0]
+                job_date_modified = _dates[-1]
+                job_date_etc = _dates[1] if len(_dates) == 3 else ""
+
                 job_details.append(
                     {
                         "job_href": job_href,
                         "job_title": job_title,
                         "job_stat_info": job_stat_info,
-                        "job_dates": job_dates,
+                        "job_date_until": job_date_until,
+                        "job_date_modified": job_date_modified,
+                        "job_date_etc": job_date_etc,
                     }
                 )
             company_list.append(
@@ -140,7 +171,6 @@ class RocketpunchPageSpider(Spider):
 
         l = ItemLoader(item=RocketpuchPage(), selector=selector)
         l.add_value("page", response.meta["page_number"])
-
         l.add_value("company_list", company_list)
         return l.load_item()
 
