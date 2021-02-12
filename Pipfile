@@ -1,4 +1,5 @@
 PIPENV_IGNORE_VIRTUALENVS=1
+PIPENV_VERBOSITY=-1
 
 [[source]]
 url = "https://pypi.org/simple"
@@ -7,7 +8,7 @@ name = "pypi"
 
 [packages]
 scrapy = "*"
-sqlalchemy = "*"
+sqlalchemy = "==1.4.0b2"
 
 [dev-packages]
 requests = "*"

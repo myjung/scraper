@@ -11,7 +11,7 @@ from utils import get_ua
 
 class PrintData:
     def process_item(self, item, spider):
-        print("type is ", type(item), item["page"])
+        spider.logger.debug(f"current page is {item['page']}")
         for company in item["company_list"]:
             print(company["company_name"], end="\t")
             print(
@@ -20,16 +20,7 @@ class PrintData:
                     for job in company["job_details"]
                 ]
             )
-        return item
-
-
-class RocketpuchPage(Item):
-    """
-    수집하려는 각 페이지를 나타내는 아이템 페이지 번호와 회사 리스트를 가지고 있다.
-    """
-
-    page = Field()
-    company_list = Field()
+        return f"{item['page']} page printing is finished"
 
 
 class RocketpunchPageSpider(Spider):
@@ -55,19 +46,19 @@ class RocketpunchPageSpider(Spider):
         "ITEM_PIPELINES": {
             "rocketpunch.PrintData": 300,
         },
-        "FEEDS": {
-            "output.json": {
-                "format": "json",
-                "indent": 2,
-                "encoding": "utf8",
-                "fields": None,
-            }
-        },
+        # "FEEDS": {
+        #     "output.json": {
+        #         "format": "json",
+        #         "indent": 2,
+        #         "encoding": "utf8",
+        #         "fields": None,
+        #     }
+        # },
     }
 
     def start_requests(self):
         """
-        Let's say hi to Rocket Punch! If this action succeeds, we can get csrf tokens.
+        Let's say hi to Rocketpunch! If this action succeeds, we can get csrf tokens.
         """
         yield Request(url=self.hello_url, callback=self.hello_parser)
 
@@ -85,7 +76,7 @@ class RocketpunchPageSpider(Spider):
         )
         self.logger.info(f"generating 1 to {end_page_number} pages requests")
         yield self.page_parser(response)
-        for page_number in range(2, end_page_number+1):
+        for page_number in range(2, 3):
             yield Request(
                 url=f"https://www.rocketpunch.com/api/jobs/template?page={page_number}&q=",
                 headers={"Referer": "https://www.rocketpunch.com/jobs"},
@@ -95,7 +86,7 @@ class RocketpunchPageSpider(Spider):
 
     def page_parser(self, response):
         """
-        현재 페이지
+        페이지 dom
         #company-list > div.company             ** 회사의 리스트
         get attr data-company-id                회사 고유 id
             div.content                         -----------------------------
@@ -110,7 +101,6 @@ class RocketpunchPageSpider(Spider):
                     span.job-stat-info :: text  연봉 및 경력 등
                     >div.job-dates
                         span ~3                 마감일, [기타 근무사항], 수정일
-
         """
         self.logger.debug("=" * 50)
         self.logger.debug(response.request.headers.to_unicode_dict())
@@ -169,10 +159,7 @@ class RocketpunchPageSpider(Spider):
                 }
             )
 
-        l = ItemLoader(item=RocketpuchPage(), selector=selector)
-        l.add_value("page", response.meta["page_number"])
-        l.add_value("company_list", company_list)
-        return l.load_item()
+        return {"page": response.meta["page_number"], "company_list": company_list}
 
 
 class RocketpunchDetailSpider(Spider):
