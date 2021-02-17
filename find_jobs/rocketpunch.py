@@ -110,16 +110,15 @@ class RocketpunchPageSpider(Spider):
         selector = Selector(text=text)
         company_list = []
         for company in selector.css("#company-list > div.company"):
-            _company_name = company.css("div.content>div.company-name")[0]
-            _a = _company_name.css("a[target='_blank']")[0]
-            _job_details = company.css("div.company-jobs-detail>div.job-detail")
             company_id = company.attrib["data-company_id"]
+            _a = company.css("div.content>div.company-name a[target='_blank']")[0]
             company_href = _a.attrib["href"]
             company_name = "".join(
                 _a.css(".header.name>strong::text,small::text").getall()
             )
             company_description = company.css("div.description::text").get().strip()
             company_meta_info = company.css("div.nowrap.meta::text").get().strip()
+            _job_details = company.css("div.company-jobs-detail>div.job-detail")
             job_details = []
             for job in _job_details:
                 job_href = job.css("a.job-title::attr(href)").get()
@@ -195,6 +194,7 @@ class RocketpunchDetailSpider(Spider):
         },
     }
     request_urls = []
+
     def start_requests(self):
         pass
 
