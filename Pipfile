@@ -8,7 +8,7 @@ name = "pypi"
 
 [packages]
 scrapy = "*"
-sqlalchemy = "==1.4.0b2"
+sqlalchemy = "==1.4.0b3"
 
 [dev-packages]
 requests = "*"
