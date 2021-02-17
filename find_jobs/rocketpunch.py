@@ -28,7 +28,7 @@ class RocketpunchPageSpider(Spider):
     first step : https://www.rocketpunch.com/jobs
         response headers를 통해 앞으로 사용할 requests headers를 설정함
     second step : https://www.rocketpunch.com/api/jobs/template?page=&q=
-        첫번째 페이지에 접속해서 전체 페이지 확인 후 한꺼번에 requests를 생성한다.
+        첫번째 페이지에 접속해서 전체 페이지를 확인한 후 한꺼번에 requests를 생성한다.
     """
 
     name = "rocketpunch_jobs"
@@ -76,7 +76,7 @@ class RocketpunchPageSpider(Spider):
         )
         self.logger.info(f"generating 1 to {end_page_number} pages requests")
         yield self.page_parser(response)
-        for page_number in range(2, 3):
+        for page_number in range(2, 4):
             yield Request(
                 url=f"https://www.rocketpunch.com/api/jobs/template?page={page_number}&q=",
                 headers={"Referer": "https://www.rocketpunch.com/jobs"},
@@ -118,11 +118,12 @@ class RocketpunchPageSpider(Spider):
             company_name = "".join(
                 _a.css(".header.name>strong::text,small::text").getall()
             )
-            company_description = company.css("div.description::text").get()
-            company_meta_info = company.css("div.nowrap.meta::text").get()
+            company_description = company.css("div.description::text").get().strip()
+            company_meta_info = company.css("div.nowrap.meta::text").get().strip()
             job_details = []
             for job in _job_details:
                 job_href = job.css("a.job-title::attr(href)").get()
+                # TODO jobid \/.*?\/(\d*?)\/ 로 추출할 것
                 job_title = job.css("a.job-title::text").get()
                 job_stat_info = job.css("span.job-stat-info::text").get()
                 _dates = tuple(
@@ -169,7 +170,36 @@ class RocketpunchDetailSpider(Spider):
     company, job, tags, techs 등의 아이템을 반환한다.
     """
 
-    pass
+    name = "rocketpunch_jobs"
+    hello_url = "https://www.rocketpunch.com/jobs"
+    custom_settings = {
+        "DOWNLOAD_DELAY": 1,
+        "USER_AGENT": get_ua(0),  # get first user_agent string
+        "DEFAULT_REQUEST_HEADERS": {
+            "dnt": "1",  # do not track me
+            "accept": "*/*",  # accept all types
+            "accept-language": "ko-KR,ko;q=0.9",
+        },
+        "SCHEDULER_DISK_QUEUE": "scrapy.squeues.PickleFifoDiskQueue",
+        "SCHEDULER_MEMORY_QUEUE": "scrapy.squeues.FifoMemoryQueue",
+        "ITEM_PIPELINES": {
+            "rocketpunch.PrintData": 300,
+        },
+        "FEEDS": {
+            "detail_output.json": {
+                "format": "json",
+                "indent": 2,
+                "encoding": "utf8",
+                "fields": None,
+            }
+        },
+    }
+    request_urls = []
+    def start_requests(self):
+        pass
+
+    def parse(self, response):
+        pass
 
 
 def main():
